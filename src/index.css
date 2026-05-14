@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+
+@theme {
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
+  --color-primary-950: #082f49;
+
+  --color-slate-850: #1e293b;
+
+  --font-sans: 'Outfit', sans-serif;
+}
+
+:root {
+  /* Default is light, classes will override */
+}
+
+body {
+  @apply bg-white text-slate-900 antialiased font-sans transition-colors duration-300;
+}
+
+
+.dark body {
+  @apply bg-slate-950 text-slate-50;
+}
+
+@layer utilities {
+  .animate-bounce-subtle {
+    animation: bounce-subtle 3s infinite;
+  }
+
+  .animate-vibrate {
+    animation: vibrate 0.3s linear infinite;
+  }
+
+  @keyframes bounce-subtle {
+
+    0%,
+    100% {
+      transform: translateY(-5%);
+    }
+
+    50% {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes vibrate {
+    0% {
+      transform: translate(0);
+    }
+
+    25% {
+      transform: translate(-2px, 2px);
+    }
+
+    50% {
+      transform: translate(2px, -2px);
+    }
+
+    75% {
+      transform: translate(-2px, -2px);
+    }
+
+    100% {
+      transform: translate(0);
+    }
+  }
+}
