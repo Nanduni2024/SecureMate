@@ -2,16 +2,11 @@ import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import * as Icons from 'lucide-react';
-import api from '../lib/api';
-import { jwtDecode } from 'jwt-decode';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { useApi } from '../lib/api';
 import { useTheme } from '../hooks/useTheme';
 import { isAxiosError } from 'axios';
-
-interface UserToken {
-    user: {
-        id: string;
-    }
-}
 
 export function Settings() {
     const { theme, setTheme } = useTheme();
@@ -19,6 +14,9 @@ export function Settings() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const { user } = useAuth();
+    const { addToast } = useToast();
+    const api = useApi();
 
     const [profile, setProfile] = useState({
         full_name: '',
@@ -41,21 +39,16 @@ export function Settings() {
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!user?.id) return;
             setLoading(true);
             try {
-                const token = localStorage.getItem('token');
-                if (token) {
-                    const decoded = jwtDecode<UserToken>(token);
-                    const user_id = decoded.user.id;
+                const [profileRes, settingsRes] = await Promise.all([
+                    api.get(`/users/${user.id}/profile`).catch(() => ({ data: {} })),
+                    api.get(`/users/${user.id}/settings`).catch(() => ({ data: {} }))
+                ]);
 
-                    const [profileRes, settingsRes] = await Promise.all([
-                        api.get(`/users/${user_id}/profile`).catch(() => ({ data: {} })),
-                        api.get(`/users/${user_id}/settings`).catch(() => ({ data: {} }))
-                    ]);
-
-                    setProfile(prev => ({ ...prev, ...profileRes.data }));
-                    setSettings(prev => ({ ...prev, ...settingsRes.data }));
-                }
+                setProfile(prev => ({ ...prev, ...profileRes.data }));
+                setSettings(prev => ({ ...prev, ...settingsRes.data }));
             } catch (err) {
                 console.error(err);
             } finally {
@@ -64,41 +57,37 @@ export function Settings() {
         };
 
         fetchData();
-    }, []);
+    }, [user, api]);
 
     const handleSaveProfile = async () => {
+        if (!user?.id) return;
         setSaving(true);
         setSaved(false);
         try {
-            const token = localStorage.getItem('token');
-            if (token) {
-                const decoded = jwtDecode<UserToken>(token);
-                await api.put(`/users/${decoded.user.id}/profile`, profile);
-                setSaved(true);
-                // Dispatch event to update Topbar
-                window.dispatchEvent(new CustomEvent('profileUpdated'));
-                setTimeout(() => setSaved(false), 3000);
-            }
+            await api.put(`/users/${user.id}/profile`, profile);
+            setSaved(true);
+            window.dispatchEvent(new CustomEvent('profileUpdated'));
+            addToast('Profile updated successfully', 'success');
+            setTimeout(() => setSaved(false), 3000);
         } catch (err) {
             console.error(err);
+            addToast('Failed to update profile', 'error');
         } finally {
             setSaving(false);
         }
     };
 
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || e.target.files.length === 0) return;
+        if (!e.target.files || e.target.files.length === 0 || !user?.id) return;
 
         const file = e.target.files[0];
 
-        // Validate file size (2MB max)
         if (file.size > 2 * 1024 * 1024) {
             setUploadError('File size must be less than 2MB');
             setTimeout(() => setUploadError(''), 5000);
             return;
         }
 
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             setUploadError('Please select an image file (JPG, PNG, GIF)');
             setTimeout(() => setUploadError(''), 5000);
@@ -113,13 +102,7 @@ export function Settings() {
         setUploadSuccess(false);
 
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                throw new Error('Not authenticated. Please log in again.');
-            }
-
-            const decoded = jwtDecode<UserToken>(token);
-            const res = await api.post(`/users/${decoded.user.id}/avatar`, formData, {
+            const res = await api.post(`/users/${user.id}/avatar`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
@@ -127,8 +110,8 @@ export function Settings() {
             setUploadSuccess(true);
             setTimeout(() => setUploadSuccess(false), 3000);
 
-            // Dispatch event to update Topbar
             window.dispatchEvent(new CustomEvent('profileUpdated'));
+            addToast('Avatar uploaded successfully', 'success');
         } catch (err: unknown) {
             console.error('Upload failed', err);
             let errorMessage = 'Failed to upload photo. Please try again.';
@@ -145,19 +128,18 @@ export function Settings() {
     };
 
     const handleSaveSettings = async () => {
+        if (!user?.id) return;
         setSaving(true);
         setSaved(false);
         try {
-            const token = localStorage.getItem('token');
-            if (token) {
-                const decoded = jwtDecode<UserToken>(token);
-                await api.put(`/users/${decoded.user.id}/settings`, settings);
-                setTheme(settings.theme as 'dark' | 'light');
-                setSaved(true);
-                setTimeout(() => setSaved(false), 3000);
-            }
+            await api.put(`/users/${user.id}/settings`, settings);
+            setTheme(settings.theme as 'dark' | 'light');
+            setSaved(true);
+            addToast('Settings saved successfully', 'success');
+            setTimeout(() => setSaved(false), 3000);
         } catch (err) {
             console.error(err);
+            addToast('Failed to save settings', 'error');
         } finally {
             setSaving(false);
         }
@@ -386,7 +368,7 @@ export function Settings() {
                                         <p className="text-xs text-slate-500">Automatically lock the vault after inactivity.</p>
                                     </div>
                                     <select
-                                        className="bg-slate-800 border-slate-700 rounded text-sm p-1.5 focus:border-primary-500"
+                                        className="bg-slate-800 border border-slate-700 rounded text-sm p-1.5 focus:border-primary-500"
                                         value={settings.auto_lock}
                                         onChange={(e) => setSettings({ ...settings, auto_lock: e.target.value })}
                                     >

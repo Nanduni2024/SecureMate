@@ -1,6 +1,8 @@
 ﻿import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import api from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { useApi } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -20,21 +22,26 @@ export function ReportDetails() {
     const { id } = useParams();
     const [report, setReport] = useState<Scan | null>(null);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
+    const { addToast } = useToast();
+    const api = useApi();
 
     useEffect(() => {
         const fetchReport = async () => {
+            if (!user?.id) return;
             try {
                 const res = await api.get(`/scans/${id}`);
                 setReport(res.data);
             } catch (err) {
                 console.error(err);
+                addToast('Failed to load report', 'error');
             } finally {
                 setLoading(false);
             }
         };
 
         fetchReport();
-    }, [id]);
+    }, [id, user, api, addToast]);
 
     const downloadPDF = () => {
         if (!report) return;
@@ -55,6 +62,19 @@ export function ReportDetails() {
         doc.text(splitText, 20, 100);
 
         doc.save(`SecureMate_Report_${report._id}.pdf`);
+        addToast('Report downloaded successfully', 'success');
+    };
+
+    const handleShare = async () => {
+        if (!report) return;
+        const shareText = `SecureMate Security Report\nURL: ${report.url}\nRisk Level: ${report.risk_level.toUpperCase()}\nThreat Score: ${report.threat_score}/100\nScan Date: ${new Date(report.created_at).toLocaleString()}`;
+
+        try {
+            await navigator.clipboard.writeText(shareText);
+            addToast('Report copied to clipboard', 'success');
+        } catch {
+            addToast('Failed to copy report', 'error');
+        }
     };
 
     if (loading) {
@@ -82,7 +102,7 @@ export function ReportDetails() {
                     Back to Reports
                 </Link>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleShare}>
                         <Share2 className="mr-2 h-4 w-4" /> Share
                     </Button>
                 </div>

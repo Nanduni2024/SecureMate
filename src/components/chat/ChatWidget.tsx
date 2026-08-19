@@ -4,6 +4,8 @@ import { Bot, X, Send, User, Maximize2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../../lib/utils';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
 interface Message {
     role: 'user' | 'model';
@@ -19,6 +21,11 @@ export function ChatWidget() {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const { token } = useAuth();
+    const { addToast } = useToast();
+    const api = axios.create({
+        baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+    });
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -40,8 +47,7 @@ export function ChatWidget() {
         setIsLoading(true);
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post('http://localhost:5000/api/chat', {
+            const response = await api.post('/chat', {
                 message: userMessage,
                 history: messages.map(m => ({ role: m.role, parts: [{ text: m.content }] }))
             }, {
@@ -51,6 +57,7 @@ export function ChatWidget() {
             setMessages(prev => [...prev, { role: 'model', content: response.data.response }]);
         } catch (error) {
             console.error('Chat Error:', error);
+            addToast('Failed to get AI response. Please try again.', 'error');
             setMessages(prev => [...prev, { role: 'model', content: '**Error**: I encountered a network issue. Please check your connection and try again.' }]);
         } finally {
             setIsLoading(false);
@@ -79,12 +86,14 @@ export function ChatWidget() {
                             <button
                                 onClick={() => setIsMaximized(!isMaximized)}
                                 className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"
+                                aria-label={isMaximized ? 'Minimize chat' : 'Maximize chat'}
                             >
                                 <Maximize2 size={16} />
                             </button>
                             <button
                                 onClick={() => setIsOpen(false)}
                                 className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg text-slate-400 transition-colors"
+                                aria-label="Close chat"
                             >
                                 <X size={18} />
                             </button>
@@ -147,11 +156,13 @@ export function ChatWidget() {
                             onChange={(e) => setInput(e.target.value)}
                             placeholder="Ask about cybersecurity, device safety..."
                             className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500/50 transition-all placeholder:text-slate-600"
+                            aria-label="Chat message input"
                         />
                         <button
                             type="submit"
                             disabled={!input.trim() || isLoading}
                             className="bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center group"
+                            aria-label="Send message"
                         >
                             <Send className={cn("h-5 w-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5", isLoading && "animate-ping")} />
                         </button>
@@ -166,6 +177,7 @@ export function ChatWidget() {
                     "w-16 h-16 rounded-[2rem] flex items-center justify-center shadow-[0_10px_40px_rgba(37,99,235,0.4)] transition-all duration-500 transform active:scale-90 relative overflow-hidden group",
                     isOpen ? "bg-slate-800 rotate-[360deg] scale-90" : "bg-primary-600 hover:bg-primary-500 hover:scale-110 animate-bounce-subtle"
                 )}
+                aria-label={isOpen ? 'Close chat' : 'Open chat'}
             >
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent transition-opacity group-hover:opacity-100 opacity-0" />
                 {isOpen ? (

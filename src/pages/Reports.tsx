@@ -1,12 +1,13 @@
 ﻿import { useEffect, useState } from 'react';
-import api from '../lib/api';
-import { jwtDecode } from 'jwt-decode';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { useApi } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { FileDown, Search, Filter } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { FileDown, Search } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -18,21 +19,54 @@ interface Scan {
     created_at: string;
 }
 
-interface UserToken {
-    user: {
-        id: string;
-    }
-}
-
 export function Reports() {
     const [reports, setReports] = useState<Scan[]>([]);
+    const [filteredReports, setFilteredReports] = useState<Scan[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [riskFilter, setRiskFilter] = useState<string>('all');
+    const { user } = useAuth();
+    const { addToast } = useToast();
+    const api = useApi();
+
+    useEffect(() => {
+        const fetchReports = async () => {
+            if (!user?.id) return;
+            try {
+                const res = await api.get(`/scans/user/${user.id}`);
+                setReports(res.data);
+                setFilteredReports(res.data);
+            } catch (err) {
+                console.error(err);
+                addToast('Failed to load reports', 'error');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchReports();
+    }, [user, api, addToast]);
+
+    useEffect(() => {
+        let filtered = reports;
+        if (searchQuery.trim()) {
+            filtered = filtered.filter(r => r.url.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        if (riskFilter !== 'all') {
+            filtered = filtered.filter(r => r.risk_level === riskFilter);
+        }
+        setFilteredReports(filtered);
+    }, [searchQuery, riskFilter, reports]);
 
     const exportToPDF = () => {
+        if (filteredReports.length === 0) {
+            addToast('No reports to export', 'warning');
+            return;
+        }
         const doc = new jsPDF();
         doc.text("SecureMate - Scan Reports", 20, 10);
 
-        const tableData = reports.map(r => [
+        const tableData = filteredReports.map(r => [
             r.url,
             new Date(r.created_at).toLocaleDateString(),
             r.risk_level.toUpperCase(),
@@ -46,13 +80,18 @@ export function Reports() {
         });
 
         doc.save('SecureMate_Reports.pdf');
+        addToast('PDF exported successfully', 'success');
     };
 
     const exportToCSV = () => {
+        if (filteredReports.length === 0) {
+            addToast('No reports to export', 'warning');
+            return;
+        }
         const headers = ['URL', 'Date', 'Risk Level', 'Threat Score'];
         const csvContent = "data:text/csv;charset=utf-8,"
             + headers.join(",") + "\n"
-            + reports.map(r => `${r.url},${new Date(r.created_at).toLocaleDateString()},${r.risk_level},${r.threat_score}`).join("\n");
+            + filteredReports.map(r => `${r.url},${new Date(r.created_at).toLocaleDateString()},${r.risk_level},${r.threat_score}`).join("\n");
 
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -61,27 +100,8 @@ export function Reports() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        addToast('CSV exported successfully', 'success');
     };
-
-    useEffect(() => {
-        const fetchReports = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                if (token) {
-                    const decoded = jwtDecode<UserToken>(token);
-                    const user_id = decoded.user.id;
-                    const res = await api.get(`/scans/user/${user_id}`);
-                    setReports(res.data);
-                }
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchReports();
-    }, []);
 
     if (loading) {
         return (
@@ -107,14 +127,27 @@ export function Reports() {
                 </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-                    <Input placeholder="Search reports..." className="pl-9" />
+                    <Input
+                        placeholder="Search reports..."
+                        className="pl-9"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
-                <Button variant="outline" size="icon">
-                    <Filter className="h-4 w-4" />
-                </Button>
+                <select
+                    className="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-300"
+                    value={riskFilter}
+                    onChange={(e) => setRiskFilter(e.target.value)}
+                    aria-label="Filter by risk level"
+                >
+                    <option value="all">All Risks</option>
+                    <option value="safe">Safe</option>
+                    <option value="warning">Warning</option>
+                    <option value="dangerous">Dangerous</option>
+                </select>
             </div>
 
             <Card>
@@ -134,7 +167,7 @@ export function Reports() {
                                 </tr>
                             </thead>
                             <tbody className="[&_tr:last-child]:border-0">
-                                {reports.map((report) => (
+                                {filteredReports.map((report) => (
                                     <tr key={report._id} className="border-b border-slate-800 transition-colors hover:bg-slate-900/50">
                                         <td className="p-4 align-middle font-medium truncate max-w-[200px]">{report.url}</td>
                                         <td className="p-4 align-middle">{new Date(report.created_at).toLocaleDateString()}</td>
@@ -149,10 +182,10 @@ export function Reports() {
                                         </td>
                                     </tr>
                                 ))}
-                                {reports.length === 0 && (
+                                {filteredReports.length === 0 && (
                                     <tr>
                                         <td colSpan={5} className="p-8 text-center text-slate-500">
-                                            No scan reports found.
+                                            {reports.length === 0 ? 'No scan reports found. Start by scanning a URL on the dashboard.' : 'No reports match your search criteria.'}
                                         </td>
                                     </tr>
                                 )}

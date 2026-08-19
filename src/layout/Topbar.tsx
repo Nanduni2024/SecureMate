@@ -1,17 +1,11 @@
-import { Search, Bell, User, Loader2, Menu, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Search, Bell, User, Loader2, Menu, LogOut, Settings as SettingsIcon, ScanSearch } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { useState, useEffect } from 'react';
-import api from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 import { cn } from '../lib/utils';
-
-interface UserToken {
-    user: {
-        id: string;
-    }
-}
+import { useApi } from '../lib/api';
 
 interface Notification {
     id: number;
@@ -31,25 +25,22 @@ export function Topbar({ toggleSidebar }: TopbarProps) {
     const [showNotifications, setShowNotifications] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const { user, token, logout } = useAuth();
+    const api = useApi();
     const navigate = useNavigate();
 
     useEffect(() => {
         const fetchUserData = async () => {
+            if (!user?.id || !token) return;
             try {
-                const token = localStorage.getItem('token');
-                if (token) {
-                    const decoded = jwtDecode<UserToken>(token);
-                    const user_id = decoded.user.id;
+                const [notifRes, profileRes] = await Promise.all([
+                    api.get(`/users/${user.id}/notifications`),
+                    api.get(`/users/${user.id}/profile`)
+                ]);
 
-                    const [notifRes, profileRes] = await Promise.all([
-                        api.get(`/users/${user_id}/notifications`),
-                        api.get(`/users/${user_id}/profile`)
-                    ]);
-
-                    setNotifications(notifRes.data);
-                    if (profileRes.data.avatar_url) {
-                        setAvatarUrl(profileRes.data.avatar_url);
-                    }
+                setNotifications(notifRes.data);
+                if (profileRes.data.avatar_url) {
+                    setAvatarUrl(profileRes.data.avatar_url);
                 }
             } catch (err) {
                 console.error('Failed to fetch user data', err);
@@ -58,26 +49,22 @@ export function Topbar({ toggleSidebar }: TopbarProps) {
 
         fetchUserData();
 
-        // Listen for profile updates
-        window.addEventListener('profileUpdated', fetchUserData);
-        return () => window.removeEventListener('profileUpdated', fetchUserData);
-    }, []);
+        const handleProfileUpdate = () => {
+            fetchUserData();
+        };
+
+        window.addEventListener('profileUpdated', handleProfileUpdate);
+        return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+    }, [user, token, api]);
 
     const handleScan = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!scanUrl) return;
+        if (!scanUrl.trim()) return;
 
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            if (token) {
-                const decoded = jwtDecode<UserToken>(token);
-                const user_id = decoded.user.id;
-                const res = await api.post('/scans', { user_id, url: scanUrl });
-                navigate(`/reports/${res.data._id}`);
-            } else {
-                navigate('/login');
-            }
+            const res = await api.post('/scans', { user_id: user?.id, url: scanUrl });
+            navigate(`/reports/${res.data._id}`);
         } catch (err) {
             console.error(err);
         } finally {
@@ -87,7 +74,7 @@ export function Topbar({ toggleSidebar }: TopbarProps) {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
+        logout();
         navigate('/login');
     };
 
@@ -103,6 +90,18 @@ export function Topbar({ toggleSidebar }: TopbarProps) {
                     onClick={toggleSidebar}
                 >
                     <Menu className="h-5 w-5" />
+                </Button>
+
+                {/* Mobile Scan shortcut */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                    onClick={() => navigate('/dashboard')}
+                    title="Scan a URL"
+                    aria-label="Scan a URL"
+                >
+                    <ScanSearch className="h-5 w-5 text-primary-400" />
                 </Button>
 
                 <div className="flex-1 flex items-center gap-4">
@@ -139,6 +138,7 @@ export function Topbar({ toggleSidebar }: TopbarProps) {
                         size="icon"
                         onClick={() => setShowNotifications(!showNotifications)}
                         className="relative"
+                        aria-label="Notifications"
                     >
                         <Bell className="h-5 w-5 text-slate-400" />
                         {unreadCount > 0 && (
@@ -170,15 +170,16 @@ export function Topbar({ toggleSidebar }: TopbarProps) {
                     <button
                         onClick={() => setShowUserMenu(!showUserMenu)}
                         className="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700 hover:border-primary-500 transition-colors"
+                        aria-label="User menu"
                     >
                         {avatarUrl ? (
                             <img
-                                src={avatarUrl.startsWith('http') ? avatarUrl : `http://localhost:5000${avatarUrl}`}
+                                src={avatarUrl.startsWith('http') ? avatarUrl : `${api.defaults.baseURL?.replace('/api', '') || 'http://localhost:5000'}${avatarUrl}`}
                                 alt="User"
                                 className="h-full w-full object-cover"
                             />
                         ) : (
-                            <User className="h-5 w-5 text-slate-400 group-hover:text-primary-400 transition-colors" />
+                            <User className="h-5 w-5 text-slate-400 hover:text-primary-400 transition-colors" />
                         )}
                     </button>
 

@@ -3,51 +3,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Lock, Plus, Search, Trash2, Key, FileText, ExternalLink, Eye, EyeOff } from 'lucide-react';
-import api from '../lib/api';
-import { jwtDecode } from 'jwt-decode';
-
-interface VaultItem {
-    _id: string;
-    type: 'password' | 'note';
-    title: string;
-    username?: string;
-    password?: string;
-    url?: string;
-    note?: string;
-    created_at: string;
-}
-
-interface UserToken {
-    user: {
-        id: string;
-    }
-}
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { useApi } from '../lib/api';
+import type { VaultItem } from '../types/vault';
 
 export function Vault() {
     const [items, setItems] = useState<VaultItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'all' | 'password' | 'note'>('all');
     const [showPassword, setShowPassword] = useState<{ [key: string]: boolean }>({});
+    const [searchQuery, setSearchQuery] = useState('');
+    const { user } = useAuth();
+    const { addToast } = useToast();
+    const api = useApi();
 
     useEffect(() => {
         const fetchItems = async () => {
+            if (!user?.id) return;
             try {
-                const token = localStorage.getItem('token');
-                if (token) {
-                    const decoded = jwtDecode<UserToken>(token);
-                    const user_id = decoded.user.id;
-                    const res = await api.get(`/vault/user/${user_id}`);
-                    setItems(res.data);
-                }
+                const res = await api.get(`/vault/user/${user.id}`);
+                setItems(res.data);
             } catch (err) {
                 console.error(err);
+                addToast('Failed to load vault items', 'error');
             } finally {
                 setLoading(false);
             }
         };
 
         fetchItems();
-    }, []);
+    }, [user, api, addToast]);
 
     const togglePassword = (id: string) => {
         setShowPassword(prev => ({ ...prev, [id]: !prev[id] }));
@@ -57,8 +43,10 @@ export function Vault() {
         try {
             await api.delete(`/vault/${id}`);
             setItems(items.filter(item => item._id !== id));
+            addToast('Vault item deleted', 'success');
         } catch (err) {
             console.error(err);
+            addToast('Failed to delete item', 'error');
         }
     };
 
@@ -74,23 +62,31 @@ export function Vault() {
 
     const addItem = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!newItem.title?.trim()) {
+            addToast('Title is required', 'warning');
+            return;
+        }
         try {
-            const token = localStorage.getItem('token');
-            if (token) {
-                const decoded = jwtDecode<UserToken>(token);
-                const res = await api.post('/vault', { ...newItem, user_id: decoded.user.id });
-                setItems([res.data, ...items]);
-                setShowAddModal(false);
-                setNewItem({ type: 'password', title: '', username: '', password: '', url: '', note: '' });
-            }
+            const res = await api.post('/vault', { ...newItem, user_id: user?.id });
+            setItems([res.data, ...items]);
+            setShowAddModal(false);
+            setNewItem({ type: 'password', title: '', username: '', password: '', url: '', note: '' });
+            addToast('Vault item added successfully', 'success');
         } catch (err) {
             console.error(err);
+            addToast('Failed to add vault item', 'error');
         }
     };
 
-    const filteredItems = activeTab === 'all'
-        ? items
-        : items.filter(item => item.type === activeTab);
+    const filteredItems = items.filter(item => {
+        const matchesTab = activeTab === 'all' || item.type === activeTab;
+        const matchesSearch = !searchQuery ||
+            item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.url?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.note?.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesTab && matchesSearch;
+    });
 
     if (loading) {
         return (
@@ -225,7 +221,12 @@ export function Vault() {
                 </div>
                 <div className="relative w-full max-w-sm">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-                    <Input placeholder="Search vault..." className="pl-9" />
+                    <Input
+                        placeholder="Search vault..."
+                        className="pl-9"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
             </div>
 
@@ -245,6 +246,7 @@ export function Vault() {
                                 size="icon"
                                 className="h-8 w-8 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={() => deleteItem(item._id)}
+                                aria-label="Delete item"
                             >
                                 <Trash2 className="h-4 w-4" />
                             </Button>
@@ -268,6 +270,7 @@ export function Vault() {
                                                     size="icon"
                                                     className="h-6 w-6"
                                                     onClick={() => togglePassword(item._id)}
+                                                    aria-label={showPassword[item._id] ? 'Hide password' : 'Show password'}
                                                 >
                                                     {showPassword[item._id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                                                 </Button>

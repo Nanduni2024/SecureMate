@@ -5,6 +5,7 @@ import { Topbar } from './Topbar';
 import { useTheme } from '../hooks/useTheme';
 import { cn } from '../lib/utils';
 import { ChatWidget } from '../components/chat/ChatWidget';
+import { Onboarding } from '../components/Onboarding';
 
 export function DashboardLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -37,6 +38,9 @@ export function DashboardLayout() {
 
             {/* AI Chatbot Widget */}
             <ChatWidget />
+
+            {/* Onboarding for new users */}
+            <Onboarding />
         </div>
     );
 }
