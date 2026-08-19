@@ -13,6 +13,9 @@ dist-ssr
 *.local
 .env
 .env.*
+env
+backend/env
+backend/uploads/*
 backend/serviceAccount*.json
 backend/firebase*.json
 backend/*firebase-adminsdk*.json
