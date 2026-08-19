@@ -1,0 +1,45 @@
+﻿
+> securemate@0.0.0 lint
+> eslint .
+
+
+D:\SecureMate\src\App.tsx
+  30:6  error  Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+D:\SecureMate\src\App.tsx:30:6
+  28 |
+  29 |   return (
+> 30 |     <AppProviders>
+     |      ^^^^^^^^^^^^ This component is created during render
+  31 |       <ThemeProvider>
+  32 |         <Router>
+  33 |           <Routes>
+
+D:\SecureMate\src\App.tsx:21:24
+  19 |   const googleClientIdRaw = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+  20 |
+> 21 |   const AppProviders = ({ children }: { children: ReactNode }) => {
+     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 22 |     return (
+     | ^^^^^^^^^^^^
+> 23 |       <GoogleOAuthProvider clientId={googleClientIdRaw || ''}>
+     | ^^^^^^^^^^^^
+> 24 |         {children}
+     | ^^^^^^^^^^^^
+> 25 |       </GoogleOAuthProvider>
+     | ^^^^^^^^^^^^
+> 26 |     );
+     | ^^^^^^^^^^^^
+> 27 |   };
+     | ^^^^ The component is created during render here
+  28 |
+  29 |   return (
+  30 |     <AppProviders>  react-hooks/static-components
+
+D:\SecureMate\src\components\ThemeProvider.tsx
+  49:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+Γ£û 2 problems (2 errors, 0 warnings)
+

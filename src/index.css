@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+
+@theme {
+  /* A more professional, slightly desaturated blue for primary */
+  --color-primary-50: #f0f7ff;
+  --color-primary-100: #e0f0fe;
+  --color-primary-200: #bae0fd;
+  --color-primary-300: #7dc5fc;
+  --color-primary-400: #38a5f8;
+  --color-primary-500: #0d8de9;
+  --color-primary-600: #0270c7;
+  --color-primary-700: #035a9e;
+  --color-primary-800: #074c85;
+  --color-primary-900: #0c3e6e;
+  --color-primary-950: #082849;
+
+  /* Sophisticated dark grays (Zinc/Neutral inspired) */
+  --color-slate-850: #202225;
+  --color-slate-900: #18191b;
+  --color-slate-950: #0f1011;
+
+  --font-sans: 'Outfit', system-ui, sans-serif;
+}
+
+:root {
+  /* Default is light, classes will override */
+}
+
+body {
+  @apply bg-white text-slate-900 antialiased font-sans transition-colors duration-300;
+  /* Improve default text rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+
+.dark body {
+  @apply bg-slate-950 text-slate-100;
+}
+
+/* Shared light-theme contrast for screens that use the dark slate utility palette. */
+.light body,
+.light .bg-slate-950 {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.light .bg-slate-900,
+.light .bg-slate-900\/50 {
+  background-color: #ffffff;
+}
+
+.light .bg-slate-800,
+.light .bg-slate-800\/50,
+.light .bg-slate-800\/40 {
+  background-color: #f1f5f9;
+}
+
+.light .border-slate-800,
+.light .border-slate-800\/50,
+.light .border-slate-700,
+.light .border-slate-700\/50 {
+  border-color: #cbd5e1;
+}
+
+.light .text-slate-100,
+.light .text-slate-200,
+.light .text-slate-300 {
+  color: #1e293b;
+}
+
+.light .text-slate-400,
+.light .text-slate-500 {
+  color: #475569;
+}
+
+.light .text-slate-600 {
+  color: #64748b;
+}
+
+.light h1,
+.light h2,
+.light h3,
+.light h4,
+.light h5,
+.light h6 {
+  color: #0f172a;
+}
+
+.light button.bg-slate-800.text-white,
+.light button.bg-slate-900.text-white {
+  color: #0f172a;
+}
+
+.light .placeholder\:text-slate-500::placeholder {
+  color: #64748b;
+}
+
+@layer utilities {
+  /* Utility for premium tracking on headings */
+  .tracking-tight-premium {
+    letter-spacing: -0.02em;
+  }
+
+  .tracking-tight-ultra {
+    letter-spacing: -0.04em;
+  }
+
+  /* Scrollbar styling */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+/* Animation utilities */
+@keyframes vibrate {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+.animate-vibrate {
+  animation: vibrate 0.3s ease-in-out infinite;
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
