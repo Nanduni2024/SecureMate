@@ -4,7 +4,6 @@ const dotenv = require('dotenv');
 const passport = require('passport');
 const session = require('express-session'); // Add this line
 const helmet = require('helmet');
-const xss = require('xss-clean');
 
 dotenv.config();
 
@@ -27,13 +26,32 @@ app.use(helmet({
             frameSrc: ["'self'", "https://accounts.google.com", "https://www.youtube.com"],
         },
     },
-    crossOriginEmbedderPolicy: false
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
-
-app.use(xss());
 
 // Middleware
 app.use(express.json({ limit: '1mb' }));
+
+// Custom XSS Sanitization compatible with Express 5
+const sanitizeValue = (val) => {
+    if (typeof val === 'string') {
+        return val.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+        for (const k in val) {
+            val[k] = sanitizeValue(val[k]);
+        }
+    }
+    return val;
+};
+
+app.use((req, res, next) => {
+    if (req.body) {
+        req.body = sanitizeValue(req.body);
+    }
+    next();
+});
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin || allowedOrigins.includes(origin)) {
@@ -104,7 +122,7 @@ app.use('/api/vault', require('./routes/vault'));
 app.use('/api/chat', require('./routes/chat'));
 
 // 404 Handler
-app.use('*', (req, res) => {
+app.use((req, res) => {
     res.status(404).json({ msg: 'Route not found' });
 });
 
@@ -118,14 +136,15 @@ app.use((err, req, res, next) => {
 });
 
 const startServer = async () => {
-  app.listen(PORT, '0.0.0.0', () =>
+  const server = app.listen(PORT, '0.0.0.0', () =>
     console.log(`Server running on port ${PORT} (bound to 0.0.0.0)`)
   );
+  return server;
 };
 
 module.exports = app;
 module.exports.startServer = startServer;
 
-if (!process.env.VERCEL) {
+if (require.main === module || !process.env.VERCEL) {
   startServer();
 }
