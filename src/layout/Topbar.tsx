@@ -88,7 +88,7 @@ export function Topbar({ toggleSidebar }: TopbarProps) {
     const unreadCount = notifications.filter(n => !n.read).length;
 
     return (
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900/50 px-4 md:px-6 backdrop-blur">
+        <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-white/10 bg-[#09171b]/80 px-4 md:px-8 backdrop-blur-xl">
             <div className="flex items-center gap-4 flex-1">
                 <Button
                     variant="ghost"

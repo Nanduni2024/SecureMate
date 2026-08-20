@@ -20,6 +20,7 @@ backend/credentials/*.json
 backend/serviceAccount*.json
 backend/firebase*.json
 backend/*firebase-adminsdk*.json
+backend/.vault-key
 
 # Editor directories and files
 .vscode/*

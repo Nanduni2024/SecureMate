@@ -1,4 +1,5 @@
 const getFirestore = require('../config/firebase');
+const { encryptSecret, decryptSecret } = require('./vaultCrypto');
 
 class FirestoreStore {
   constructor() {
@@ -132,32 +133,53 @@ class FirestoreStore {
   async getVaultItems(userId) {
     if (this.db) {
       const snapshot = await this.db.collection('vault').where('user_id', '==', userId).get();
-      return snapshot.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
+      return snapshot.docs.map(doc => this.decryptVaultItem({ _id: doc.id, ...doc.data() }));
     }
     const items = [];
     for (const [id, item] of this.memoryVault.entries()) {
-      if (item.user_id === userId) items.push({ _id: id, ...item });
+      if (item.user_id === userId) items.push(this.decryptVaultItem({ _id: id, ...item }));
     }
     return items;
   }
 
   async addVaultItem(item) {
     const id = 'vault_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-    const newItem = { ...item, created_at: new Date().toISOString() };
+    const newItem = {
+      ...item,
+      created_at: new Date().toISOString()
+    };
+    delete newItem.password;
+    delete newItem.note;
+    if (item.password) newItem.password_encrypted = encryptSecret(item.password);
+    if (item.note) newItem.note_encrypted = encryptSecret(item.note);
     if (this.db) {
       await this.db.collection('vault').doc(id).set(newItem);
-      return { _id: id, ...newItem };
+      return this.decryptVaultItem({ _id: id, ...newItem });
     }
     this.memoryVault.set(id, newItem);
-    return { _id: id, ...newItem };
+    return this.decryptVaultItem({ _id: id, ...newItem });
   }
 
-  async deleteVaultItem(id) {
+  decryptVaultItem(item) {
+    return {
+      ...item,
+      password: item.password_encrypted ? decryptSecret(item.password_encrypted) : item.password,
+      note: item.note_encrypted ? decryptSecret(item.note_encrypted) : item.note
+    };
+  }
+
+  async deleteVaultItem(id, userId) {
     if (this.db) {
-      await this.db.collection('vault').doc(id).delete();
-      return;
+      const docRef = this.db.collection('vault').doc(id);
+      const doc = await docRef.get();
+      if (!doc.exists || doc.data().user_id !== userId) return false;
+      await docRef.delete();
+      return true;
     }
+    const item = this.memoryVault.get(id);
+    if (!item || item.user_id !== userId) return false;
     this.memoryVault.delete(id);
+    return true;
   }
 
   async getScans(userId) {
@@ -192,6 +214,7 @@ class FirestoreStore {
     const newScan = {
       url: scanData.url,
       user_id: scanData.user_id,
+      link_type: scanData.link_type || 'unknown',
       risk_level: scanData.risk_level || 'safe',
       threat_score: Number.isFinite(scanData.threat_score) ? scanData.threat_score : 5,
       ai_summary: scanData.ai_summary || 'No immediate threats were detected by the current URL analysis.',

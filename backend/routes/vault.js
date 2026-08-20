@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const store = require('../services/firestoreStore');
+const auth = require('../middleware/auth');
 
 // GET /api/vault/user/:id
-router.get('/user/:id', async (req, res) => {
+router.get('/user/:id', auth.requireSameUser, async (req, res) => {
   try {
     const items = await store.getVaultItems(req.params.id);
     res.json(items);
@@ -13,11 +14,11 @@ router.get('/user/:id', async (req, res) => {
 });
 
 // POST /api/vault
-router.post('/', async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
-    const { user_id, type, title, username, password, url, note } = req.body;
+    const { type, title, username, password, url, note } = req.body;
     if (!title) return res.status(400).json({ msg: 'Title is required' });
-    const item = await store.addVaultItem({ user_id, type, title, username, password, url, note });
+    const item = await store.addVaultItem({ user_id: req.user.id, type, title, username, password, url, note });
     res.json(item);
   } catch (err) {
     res.status(500).json({ msg: 'Error saving vault item' });
@@ -25,9 +26,10 @@ router.post('/', async (req, res) => {
 });
 
 // DELETE /api/vault/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
-    await store.deleteVaultItem(req.params.id);
+    const deleted = await store.deleteVaultItem(req.params.id, req.user.id);
+    if (!deleted) return res.status(404).json({ msg: 'Vault item not found' });
     res.json({ msg: 'Vault item deleted' });
   } catch (err) {
     res.status(500).json({ msg: 'Error deleting vault item' });

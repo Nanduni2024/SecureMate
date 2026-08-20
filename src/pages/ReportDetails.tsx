@@ -12,6 +12,7 @@ import { jsPDF } from 'jspdf';
 interface Scan {
     _id: string;
     url: string;
+    link_type: 'official' | 'malicious' | 'suspicious' | 'unknown';
     risk_level: string;
     threat_score: number;
     ai_summary: string;
@@ -127,6 +128,13 @@ export function ReportDetails() {
                                     {report.threat_score}/100
                                 </p>
                             </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-slate-900 rounded-lg border border-slate-800">
+                            <p className="text-sm text-slate-400">Link Classification</p>
+                            <Badge variant={report.link_type === 'malicious' ? 'destructive' : report.link_type === 'official' ? 'default' : 'secondary'} className="uppercase">
+                                {report.link_type}
+                            </Badge>
                         </div>
 
                         <div className="space-y-4">

@@ -31,6 +31,12 @@ const getCredential = () => {
         return cert(require(resolvedPath));
     }
 
+    const localCredential = fs.readdirSync(path.join(__dirname, '..', 'credentials'))
+        .find(file => file.endsWith('.json'));
+    if (localCredential) {
+        return cert(require(path.join(__dirname, '..', 'credentials', localCredential)));
+    }
+
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
     const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');

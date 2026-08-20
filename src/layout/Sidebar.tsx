@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { LayoutDashboard, Shield, FileText, Settings, BookOpen, X } from 'lucide-react';
+import { LayoutDashboard, Shield, FileText, Settings, BookOpen, X, LockKeyhole, Circle } from 'lucide-react';
 import Logo from '../assets/Logo.png';
 
 const navigation = [
@@ -19,13 +19,13 @@ interface SidebarProps {
 export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     return (
         <aside className={cn(
-            "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-800 bg-slate-900 transition-transform duration-300 md:relative md:translate-x-0",
+            "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-white/10 bg-[#09171b] transition-transform duration-300 md:relative md:translate-x-0",
             isOpen ? "translate-x-0" : "-translate-x-full"
         )}>
-            <div className="flex h-16 items-center justify-between px-6 border-b border-slate-800">
+            <div className="flex h-20 items-center justify-between px-6 border-b border-white/10">
                 <div className="flex items-center">
                     <img src={Logo} alt="SecureMate Logo" className="h-8 w-8 mr-2" />
-                    <span className="text-xl font-bold text-white tracking-tight">SecureMate</span>
+                    <div><span className="text-lg font-bold text-white tracking-tight">SecureMate</span><span className="block text-[10px] uppercase tracking-[0.22em] text-teal-400/80">Personal defense</span></div>
                 </div>
                 <button
                     className="p-1 text-slate-400 hover:text-white md:hidden"
@@ -35,6 +35,7 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 </button>
             </div>
             <div className="flex flex-col gap-y-1 p-4 flex-1 overflow-y-auto">
+                <p className="px-3 pb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Workspace</p>
                 {navigation.map((item) => (
                     <NavLink
                         key={item.name}
@@ -42,10 +43,10 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                         onClick={() => setIsOpen(false)}
                         className={({ isActive }) =>
                             cn(
-                                "flex items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                                "flex items-center gap-x-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
                                 isActive
-                                    ? "bg-primary-600/10 text-primary-400"
-                                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    ? "bg-teal-400/10 text-teal-300 shadow-[inset_3px_0_0_#2dd4bf]"
+                                    : "text-slate-400 hover:bg-white/5 hover:text-white"
                             )
                         }
                     >
@@ -54,10 +55,10 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     </NavLink>
                 ))}
             </div>
-            <div className="p-4 border-t border-slate-800">
-                <div className="flex items-center gap-x-3 px-3 py-2 text-sm text-slate-400 italic">
-                    <Shield className="h-5 w-5 text-primary-500" />
-                    <span>Secure Environment</span>
+            <div className="p-4 border-t border-white/10">
+                <div className="rounded-lg border border-teal-400/20 bg-teal-400/5 p-3">
+                    <div className="flex items-center gap-x-2 text-xs font-semibold text-teal-300"><LockKeyhole className="h-4 w-4" />Secure environment</div>
+                    <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500"><Circle className="h-2 w-2 fill-emerald-400 text-emerald-400" />All systems operational</div>
                 </div>
             </div>
         </aside>

@@ -13,7 +13,7 @@ export function DashboardLayout() {
 
     return (
         <div className={cn(
-            "flex min-h-screen font-sans selection:bg-primary-500/30 transition-colors duration-300",
+            "flex min-h-screen font-sans selection:bg-primary-500/30 transition-colors duration-300 bg-[#071014]",
             theme === 'dark' ? "bg-slate-950 text-slate-50" : "bg-slate-50 text-slate-900"
         )}>
             {/* Mobile Sidebar Overlay */}
@@ -28,7 +28,7 @@ export function DashboardLayout() {
 
             <div className="flex flex-1 flex-col min-w-0">
                 <Topbar toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-                <main className="flex-1 overflow-y-auto p-4 md:p-8">
+                <main className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_85%_0%,rgba(14,165,164,0.12),transparent_28rem)] p-4 md:p-8">
                     <Outlet />
                 </main>
                 <footer className="border-t border-slate-800 p-6 text-center text-sm text-slate-500">

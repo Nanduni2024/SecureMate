@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const store = require('../services/firestoreStore');
 const auth = require('../middleware/auth');
+const { analyzeUrl } = require('../services/urlAnalyzer');
 
 // GET /api/scans/user/:id
 router.get('/user/:id', auth.requireSameUser, async (req, res) => {
@@ -29,7 +30,12 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ msg: 'Only HTTP and HTTPS URLs can be scanned' });
     }
 
-    const scan = await store.addScan({ user_id: req.user.id, url: parsedUrl.toString() });
+    const analysis = analyzeUrl(parsedUrl);
+    const scan = await store.addScan({
+      user_id: req.user.id,
+      url: parsedUrl.toString(),
+      ...analysis
+    });
     res.json(scan);
   } catch (err) {
     console.error('Error creating scan:', err);

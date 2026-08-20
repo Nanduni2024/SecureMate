@@ -1,15 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
 import { Bot, X, Send, User, Maximize2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../../lib/utils';
-import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useApi } from '../../lib/api';
 
 interface Message {
     role: 'user' | 'model';
     content: string;
+    source?: 'gemini' | 'fallback';
 }
 
 export function ChatWidget() {
@@ -20,12 +20,10 @@ export function ChatWidget() {
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [aiSource, setAiSource] = useState<'gemini' | 'fallback'>('fallback');
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const { token } = useAuth();
     const { addToast } = useToast();
-    const api = axios.create({
-        baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-    });
+    const api = useApi();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,11 +48,11 @@ export function ChatWidget() {
             const response = await api.post('/chat', {
                 message: userMessage,
                 history: messages.map(m => ({ role: m.role, parts: [{ text: m.content }] }))
-            }, {
-                headers: { 'x-auth-token': token }
             });
 
-            setMessages(prev => [...prev, { role: 'model', content: response.data.response }]);
+            const source = response.data.source === 'gemini' ? 'gemini' : 'fallback';
+            setAiSource(source);
+            setMessages(prev => [...prev, { role: 'model', content: response.data.response, source }]);
         } catch (error) {
             console.error('Chat Error:', error);
             addToast('Failed to get AI response. Please try again.', 'error');
@@ -78,7 +76,9 @@ export function ChatWidget() {
                             <div>
                                 <h3 className="text-white font-bold text-sm tracking-tight">SecureMate AI</h3>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="text-[10px] font-bold text-slate-500 tracking-widest uppercase text-xs">Online Expert Assistant</span>
+                                    <span className={cn("text-[10px] font-bold tracking-widest uppercase", aiSource === 'gemini' ? "text-emerald-500" : "text-amber-500")}>
+                                        {aiSource === 'gemini' ? 'Gemini AI online' : 'Local security guidance'}
+                                    </span>
                                 </div>
                             </div>
                         </div>
